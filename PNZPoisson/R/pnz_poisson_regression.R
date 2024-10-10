@@ -129,6 +129,7 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
 
   fit$std_errors= std_errors
   fit$var_cov_matrix= var_cov_matrix
+
   return(fit)
 
 
@@ -156,28 +157,28 @@ mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", 
   nullLL=-NULLfit$value
   nulldeviance=2*(saturatedLL-nullLL)
 
-  # Compute AIC and BIC
-  AIC = 2 * (p+1) - 2 * logLikelihood
-  BIC = log(n) * (p+1) - 2 * logLikelihood
-
   # Compile results
   result <- list(
-    betas = betas_est,
+    coefficients = betas_est,
     theta = theta_est,
     std_errors = fit$std_errors,
     logLik = logLikelihood,
-    AIC = 2 * (p+1) - 2 * logLikelihood,
-    BIC = log(n) * (p+1) - 2 * logLikelihood,
-    Res_deviance = resdeviance,
-    Null_deviance = nulldeviance,
-    convergence = fit$convergence,
+    aic = 2 * (p+1) - 2 * logLikelihood,
+    bic = log(n) * (p+1) - 2 * logLikelihood,
+    null.deviance = nulldeviance,
+    deviance = resdeviance,
+    df.null=n-2,
+    df.residual=n-p-1,
+    converged = fit$converged,
     var_cov_matrix = fit$var_cov_matrix,
+    method= method,
     X = X,
     y = y,
     n = n,
     p = p,
-    df_null=n-2,
-    df_residual=n-p-1
+    fitted.values = exp(X%*%betas_est),
+    residuals = y-exp(X%*%betas_est),
+    iter = fit$counts["function"]
   )
 
   return(result)
@@ -232,25 +233,16 @@ glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
 }
 
 
-
 #' Summary Method for PNZ-Poisson GLM Objects
 #'
-#' Provides a summary of a fitted PNZ-Poisson generalized linear model, including coefficients, standard errors, z-values, p-values, log-likelihood, AIC, BIC, deviance measures, and convergence status.
+#' Provides a summary of a fitted PNZ-Poisson generalized linear model, including coefficients,
+#' standard errors, z-values, p-values, log-likelihood, AIC, BIC, deviance measures, degrees of freedom, and convergence status.
 #'
 #' @param object An object of class \code{pnzpois_glm} produced by \code{\link{glm.pnz}}.
 #' @param ... Additional arguments (currently not used).
 #'
 #' @return An object of class \code{summary.pnz_glm} containing the summary information.
 #'
-#' @details
-#' The summary includes a table of coefficients with their estimates, standard errors, z-values, and p-values. It also provides information on the dispersion parameter (\code{theta}), log-likelihood, AIC, BIC, residual deviance, null deviance, degrees of freedom, and optimization convergence status.
-#'
-#' @examples
-#' # Assuming 'fit' is a fitted pnzpois_glm object
-#' summary_fit <- summary(fit)
-#' print(summary_fit)
-#'
-#' @export
 summary.pnz_glm <- function(object, ...) {
   # Extract estimates and standard errors
   estimates <- object$betas
@@ -277,9 +269,10 @@ summary.pnz_glm <- function(object, ...) {
   logLik <- object$logLik
   AIC <- object$AIC
   BIC <- object$BIC
-  Res_deviance<-object$Res_deviance
-  Null_deviance<-object$Null_deviance
-  df <- object$df
+  Res_deviance <- object$Res_deviance
+  Null_deviance <- object$Null_deviance
+  df_null <- object$df_null  # Null degrees of freedom
+  df_residual <- object$df_residual  # Residual degrees of freedom
 
   # Output the summary
   summary_output <- list(
@@ -290,14 +283,16 @@ summary.pnz_glm <- function(object, ...) {
     BIC = BIC,
     Res_deviance = Res_deviance,
     Null_deviance = Null_deviance,
-    df = df,
+    df_null = df_null,
+    df_residual = df_residual,
     theta = object$theta,
     convergence = object$convergence
   )
 
-  class(summary_output) <- "summary.pnzpois_glm"
+  class(summary_output) <- "pnzpois_glm"
   return(summary_output)
 }
+
 
 
 
@@ -384,9 +379,12 @@ logLik(poisglm)
 
 pnzpoismodel <- glm.pnz(y ~ x1 + x2, data = data, max_retries = 10)
 # Get the summary of the custom model
-summary.pnz_glm(pnzpoismodel)
+print(summary(pnzpoismodel))
+summary(pnzpoismodel)
+
 
 fish=sum((residuals(poisglm, type="pearson")^2))/ (n - 4)
 
 fitted = predict(poisglm, type = "response")
 logLikPNZ(y,fitted,fish)
+
