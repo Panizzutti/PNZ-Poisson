@@ -1,3 +1,15 @@
+logLikPNZ_scalar <- function(k, lambda, theta) {
+  # Handle zero or negative PMF values to avoid log(0) or log of negative numbers
+  if (lambda == 0) {
+    0
+  } else {
+    p=dpnzpois_scalar(k, lambda, theta)
+    if (p <= 0 | is.na(p)) {return(-147)}
+    log(p)
+  }
+
+
+}
 
 neg_log_likelihood_loglink <- function(params, X, y) {
   # Extract beta coefficients and theta
@@ -14,23 +26,12 @@ neg_log_likelihood_loglink <- function(params, X, y) {
   eta <- X %*% betas
   lambda <- exp(eta)
 
-
   # Use sapply to compute dpnzpois for each observation
-  Li <- sapply(seq_along(y), function(i) {
-    if (lambda[i] == 0) {
-      1
-    } else {
-      dpnzpois_scalar(y[i], lambda[i], theta)
-    }
+  LLi <- sapply(seq_along(y), function(i) {
+    logLikPNZ_scalar(k[i],lambda[i],theta)
   })
 
-  # Handle zero or negative PMF values to avoid log(0) or log of negative numbers
-  # Add a small epsilon to Li to prevent log(0)
-  epsilon <- 1e-64
-  Li[Li <= 0 | is.na(Li)] <- epsilon
-
-  # Compute the negative log-likelihood
-  negLL <- -sum(log(Li))
+  negLL <- -sum(LLi)
   return(negLL)
 }
 
