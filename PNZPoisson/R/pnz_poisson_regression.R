@@ -227,7 +227,7 @@ glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
   fit_result$data <- data
 
   # Set the class of the object
-  class(fit_result) <- "pnzpois_glm"
+  class(fit_result) <- "glm.pnz"
 
   return(fit_result)
 }
@@ -246,12 +246,7 @@ glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
 #' @return An object of class \code{summary.pnz_glm} containing the summary information.
 #'
 #' @export
-summary.pnz_glm <- function(object, ...) {
-
-  # Ensure the object is of the correct class
-  if (!inherits(object, "pnzpois_glm")) {
-    stop("Object must be of class 'pnzpois_glm'")
-  }
+summary.glm.pnz <- function(object, ...) {
 
   # Create a coefficients table
   coefficients_table <- data.frame(
@@ -265,14 +260,10 @@ summary.pnz_glm <- function(object, ...) {
   # Assign parameter names as row names
   rownames(coefficients_table) <- colnames(object$X)
 
-  # Calculate residuals summary
-  residuals_summary <-
-
   # Compile the summary as a list directly referencing object components
   summary_output <- list(
     call            = object$call,
     terms           = object$formula,
-    residuals       = summary(object$residuals),
     coefficients     = coefficients_table,
     dispersion       = object$theta,
     null.deviance    = object$null.deviance,
@@ -286,11 +277,12 @@ summary.pnz_glm <- function(object, ...) {
     fitted.values    = object$fitted.values,
     data             = object$data,
     n                = object$n,
-    p                = object$p  # Including theta
+    p                = object$p,  # Including theta
+    converged        = object$converged
   )
 
   # Assign class to the summary object
-  class(summary_output) <- "summary.pnzpois_glm"
+  class(summary_output) <- "summary.glm.pnz"
 
   return(summary_output)
 }
@@ -310,11 +302,8 @@ summary.pnz_glm <- function(object, ...) {
 #' @return Prints the summary to the console.
 #'
 #' @export
-print.summary.pnzpois_glm <- function(x, ...) {
-  # Ensure the object is of the correct summary class
-  if (!inherits(x, "summary.pnzpois_glm")) {
-    stop("Object must be of class 'summary.pnzpois_glm'")
-  }
+print.summary.glm.pnz <- function(x, ...) {
+
 
   # Print the Call
   cat("\nCall:\n")
@@ -340,8 +329,8 @@ print.summary.pnzpois_glm <- function(x, ...) {
   cat("Number of Fisher Scoring iterations:", x$iter, "\n")
 
   # Check for Convergence Status
-  if (!is.null(x$convergence)) {
-    if (x$convergence == 0) {
+  if (!is.null(x$converged)) {
+    if (x$converged == 0) {
       cat("Optimization converged successfully.\n")
     } else {
       cat("Optimization did not converge.\n")

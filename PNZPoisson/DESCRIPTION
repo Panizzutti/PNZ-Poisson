@@ -4,8 +4,7 @@ Title: Panizzutti's Poisson Regression and functions
 Version: 0.1.0
 Author: Giorgio Panizzutti
 Maintainer: The package maintainer <giorgio.panizzutti@gmail.com>
-Description: This package implements the PNZ Poisson model described in "Developing Discrete Distributions: A New Approach to Poisson Generalization" by Giorgio Panizzutti. The mean-parametrized PNZ-Poisson model allows for arbitrary dispersion in count models, maintaining the Poisson special case when theta = 1.
+Description: This package implements the PNZ Poisson model described in "Developing Discrete Distributions: A New Approach to Poisson Generalization" by Giorgio Panizzutti. The mean-parametrized PNZ-Poisson model allows for arbitrary underdispersion for any mean in count models, maintaining the Poisson special case when theta = 1.
 License: GPL-2
 Encoding: UTF-8
-LazyData: true
 RoxygenNote: 7.3.2

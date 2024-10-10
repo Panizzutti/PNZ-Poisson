@@ -76,7 +76,7 @@ ppnzpois_scalar <- function(k, lambda, theta) {
 #' @return A numeric vector of the same length as \code{k}, containing the PMF evaluated at each element of \code{k}.
 #' @details The PNZ-Poisson distribution allows for greater flexibility in modeling count data with over-dispersion compared to the standard Poisson distribution.
 #'
-#' The function is vectorized, meaning that \code{k}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be recycled to match the length of the longest input vector. All vector inputs must either be of the same length or have a length of 1.
+#' The function is vectorized, meaning that \code{k}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be used for all evaluations. All vector inputs must either be of the same length or have a length of 1.
 #'
 #' @examples
 #' # Evaluate the PMF at k = 0:10 with lambda = 2 and theta = 1
@@ -179,7 +179,7 @@ rpnzpois <- function(n, lambda, theta) {
 #' @return An integer vector of the same length as \code{p}, containing the quantiles corresponding to each probability in \code{p}.
 #' @details The quantile function finds the smallest integer \eqn{k} such that the CDF at \eqn{k} is greater than or equal to the specified probability \eqn{p}.
 #'
-#' The function is vectorized, meaning that \code{p}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be recycled to match the length of the longest input vector. All vector inputs must either be of the same length or have a length of 1.
+#' The function is vectorized, meaning that \code{p}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be used for all evaluations. All vector inputs must either be of the same length or have a length of 1.
 #'
 #' @examples
 #' # Find the 25th, 50th, and 75th percentiles with lambda = 2 and theta = 1
@@ -270,7 +270,7 @@ qpnzpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
 
 #' Log-Likelihood Function for a sample of the PNZ-Poisson Distribution
 #'
-#' Calculates the log-likelihood for observed count data under the PNZ-Poisson distribution. This function is capable of handling both scalar and vector inputs for the observed counts (\code{k}), mean parameters (\code{lambda}), and dispersion parameters (\code{theta}). If any of these parameters are vectors, they must either be of the same length or have a length of 1, in which case the single value is recycled across all evaluations.
+#' Calculates the log-likelihood for observed count data under the PNZ-Poisson distribution. This function is capable of handling both scalar and vector inputs for the observed counts (\code{k}), mean parameters (\code{lambda}), and dispersion parameters (\code{theta}). If any of these parameters are vectors, they must either be of the same length or have a length of 1, in which case the single value is used for all evaluations.
 #'
 #' @param k A vector of non-negative integers representing the observed count data.
 #' @param lambda A positive parameter representing the mean of the distribution.
@@ -281,7 +281,6 @@ qpnzpois <- function(p, lambda, theta, lower.tail = TRUE, log.p = FALSE) {
 #' @details
 #' The PNZ-Poisson (Poisson-Negative Zero) distribution is a generalization of the Poisson distribution that introduces arbitrary underdispersion. The log-likelihood is computed by first calculating the probability mass function (PMF) for each observed count \eqn{k} using the \code{dpnzpois_scalar} function. To ensure numerical stability and avoid taking the logarithm of zero or \code{NA} values, any PMF values that are less than or equal to zero or \code{NA} are replaced with a very small positive number (\eqn{\epsilon = 1 \times 10^{-64}}).
 #'
-#' The function is fully vectorized, allowing for efficient computation over large datasets. It ensures that all input vectors are compatible in length, either by matching their lengths or by recycling scalar values as necessary.
 #'
 #' @examples
 #' # Single set of parameters
