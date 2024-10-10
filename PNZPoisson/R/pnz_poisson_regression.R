@@ -1,9 +1,4 @@
 
-
-
-
-
-
 neg_log_likelihood_loglink <- function(params, X, y) {
   # Extract beta coefficients and theta
   p <- length(params) - 1
@@ -14,8 +9,6 @@ neg_log_likelihood_loglink <- function(params, X, y) {
   if (theta <= 0) {
     return(Inf)  # Return infinity to penalize non-positive theta
   }
-  #print("gaherqgreger")
-  #print(c(betas,theta))
 
   # Compute linear predictor and lambda
   eta <- X %*% betas
