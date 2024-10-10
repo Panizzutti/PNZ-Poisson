@@ -169,13 +169,13 @@ mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", 
     deviance = resdeviance,
     df.null=n-2,
     df.residual=n-p-1,
-    converged = fit$converged,
+    converged = fit$convergence,
     var_cov_matrix = fit$var_cov_matrix,
     method= method,
     X = X,
     y = y,
     n = n,
-    p = p,
+    p = p+1,
     fitted.values = exp(X%*%betas_est),
     residuals = y-exp(X%*%betas_est),
     iter = fit$counts["function"]
@@ -233,158 +233,125 @@ glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
 }
 
 
+
 #' Summary Method for PNZ-Poisson GLM Objects
 #'
-#' Provides a summary of a fitted PNZ-Poisson generalized linear model, including coefficients,
-#' standard errors, z-values, p-values, log-likelihood, AIC, BIC, deviance measures, degrees of freedom, and convergence status.
+#' Provides a comprehensive summary of a fitted PNZ-Poisson generalized linear model, including coefficients,
+#' standard errors, z-values, p-values, residual summaries, dispersion parameter, log-likelihood,
+#' AIC, BIC, deviance measures, degrees of freedom, number of iterations, and convergence status.
 #'
 #' @param object An object of class \code{pnzpois_glm} produced by \code{\link{glm.pnz}}.
 #' @param ... Additional arguments (currently not used).
 #'
 #' @return An object of class \code{summary.pnz_glm} containing the summary information.
 #'
+#' @export
 summary.pnz_glm <- function(object, ...) {
-  # Extract estimates and standard errors
-  estimates <- object$betas
-  std_errors <- object$std_errors[1:length(estimates)]
 
-  # Calculate z-values and p-values
-  z_values <- estimates / std_errors
-  p_values <- 2 * (1 - pnorm(abs(z_values)))
+  # Ensure the object is of the correct class
+  if (!inherits(object, "pnzpois_glm")) {
+    stop("Object must be of class 'pnzpois_glm'")
+  }
 
   # Create a coefficients table
   coefficients_table <- data.frame(
-    Estimate = estimates,
-    'Std. Error' = std_errors,
-    'z value' = z_values,
-    'Pr(>|z|)' = p_values,
-    check.names = FALSE  # Prevents R from altering column names
+    Estimate     = object$coefficients,
+    `Std. Error` = object$std_errors[1:length(object$coefficients)],
+    `z value`    = object$coefficients / object$std_errors[1:length(object$coefficients)],
+    `Pr(>|z|)`   = 2 * (1 - pnorm(abs(object$coefficients / object$std_errors[1:length(object$coefficients)]))),
+    check.names  = FALSE
   )
 
-  # Add row names as parameter names
-  param_names <- colnames(object$X)
-  rownames(coefficients_table) <- param_names
+  # Assign parameter names as row names
+  rownames(coefficients_table) <- colnames(object$X)
 
-  # Extract additional measures
-  logLik <- object$logLik
-  AIC <- object$AIC
-  BIC <- object$BIC
-  Res_deviance <- object$Res_deviance
-  Null_deviance <- object$Null_deviance
-  df_null <- object$df_null  # Null degrees of freedom
-  df_residual <- object$df_residual  # Residual degrees of freedom
+  # Calculate residuals summary
+  residuals_summary <-
 
-  # Output the summary
+  # Compile the summary as a list directly referencing object components
   summary_output <- list(
-    call = object$call,
-    coefficients = coefficients_table,
-    logLik = logLik,
-    AIC = AIC,
-    BIC = BIC,
-    Res_deviance = Res_deviance,
-    Null_deviance = Null_deviance,
-    df_null = df_null,
-    df_residual = df_residual,
-    theta = object$theta,
-    convergence = object$convergence
+    call            = object$call,
+    terms           = object$formula,
+    residuals       = summary(object$residuals),
+    coefficients     = coefficients_table,
+    dispersion       = object$theta,
+    null.deviance    = object$null.deviance,
+    residual.deviance= object$deviance,
+    aic              = object$aic,
+    bic              = object$bic,
+    df.null          = object$df.null,
+    df.residual      = object$df.residual,
+    logLik           = object$logLik,
+    iter             = object$iter,
+    fitted.values    = object$fitted.values,
+    data             = object$data,
+    n                = object$n,
+    p                = object$p  # Including theta
   )
 
-  class(summary_output) <- "pnzpois_glm"
+  # Assign class to the summary object
+  class(summary_output) <- "summary.pnzpois_glm"
+
   return(summary_output)
 }
 
 
 
 
-
-
 #' Print Method for Summary PNZ-Poisson GLM Objects
 #'
-#' Prints a concise summary of a fitted PNZ-Poisson generalized linear model.
+#' Prints a detailed summary of a fitted PNZ-Poisson generalized linear model to the console,
+#' including call, residual summaries, coefficients table, dispersion parameter, deviance measures,
+#' information criteria, degrees of freedom, and number of iterations.
 #'
-#' @param x An object of class \code{summary.pnz_glm} produced by \code{\link{summary.pnz_glm}}.
+#' @param x An object of class \code{summary.pnzpois_glm} produced by \code{\link{summary.pnz_glm}}.
 #' @param ... Additional arguments (currently not used).
 #'
 #' @return Prints the summary to the console.
 #'
-#' @examples
-#' # Assuming 'summary_fit' is a summary.pnz_glm object
-#' print(summary_fit)
-#'
 #' @export
-print.summary.pnz_glm <- function(x, ...) {
+print.summary.pnzpois_glm <- function(x, ...) {
+  # Ensure the object is of the correct summary class
+  if (!inherits(x, "summary.pnzpois_glm")) {
+    stop("Object must be of class 'summary.pnzpois_glm'")
+  }
+
+  # Print the Call
   cat("\nCall:\n")
   print(x$call)
 
+  # Print Coefficients
   cat("\nCoefficients:\n")
   printCoefmat(x$coefficients, digits = 4, signif.stars = TRUE)
 
-  cat("\nDispersion parameter (theta):")
-  print(x$theta[1])
+  # Print Dispersion Parameter
+  cat("\nDispersion parameter (theta):", formatC(x$dispersion, digits = 4), "\n")
 
-  cat("Log-likelihood:")
-  print(x$logLik)
+  # Print Null and Residual Deviance
+  cat("\nNull deviance:", formatC(x$null.deviance, digits = 4),
+      "on", x$df.null, "degrees of freedom\n")
+  cat("Residual deviance:", formatC(x$residual.deviance, digits = 4),
+      "on", x$df.residual, "degrees of freedom\n")
 
-  cat("\nNull deviance:")
-  print(x$Null_deviance)
+  # Print AIC and BIC
+  cat("AIC:", formatC(x$aic, digits = 4), "\n")
 
-  cat("\nResidual deviance:")
-  print(x$Res_deviance)
+  # Print Number of Iterations
+  cat("Number of Fisher Scoring iterations:", x$iter, "\n")
 
-  cat("\nAIC:")
-  print(x$AIC)
-
-  cat("BIC:")
-  print(x$BIC)
-
-  if (x$convergence == 0) {
-    cat("\nOptimization converged successfully.\n")
+  # Check for Convergence Status
+  if (!is.null(x$convergence)) {
+    if (x$convergence == 0) {
+      cat("Optimization converged successfully.\n")
+    } else {
+      cat("Optimization did not converge.\n")
+    }
   } else {
-    cat("\nOptimization did not converge.\n")
+    cat("Convergence information not available.\n")
   }
 }
 
 
 
 
-
-
-
-
-
-
-
-set.seed(52)
-n <- 100
-x1sim <- rnorm(n,14,3)
-x2sim <- runif(n)
-beta_true <- c(0.8, 0.3, -0.5)
-theta_true <- 0.5
-
-# Simulate response variable y
-data <- data.frame(x1 = x1sim, x2 = x2sim)
-X <- model.matrix(~ x1 + x2, data)
-eta <- X %*% beta_true
-lambda <- exp(eta)
-lambda
-y <- sapply(lambda, function(l) rpnzpois(1,l , theta_true))
-data$y <- y
-y
-
-poisglm = glm(y ~ x1 + x2, data=data, family=poisson(link = "log"))
-summary(poisglm)
-logLik(poisglm)
-
-#summary( glm(y ~ x1 + x2, data=data, family=quasipoisson(link = "log")))
-
-pnzpoismodel <- glm.pnz(y ~ x1 + x2, data = data, max_retries = 10)
-# Get the summary of the custom model
-print(summary(pnzpoismodel))
-summary(pnzpoismodel)
-
-
-fish=sum((residuals(poisglm, type="pearson")^2))/ (n - 4)
-
-fitted = predict(poisglm, type = "response")
-logLikPNZ(y,fitted,fish)
 
