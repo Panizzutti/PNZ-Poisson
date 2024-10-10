@@ -207,10 +207,6 @@ mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", 
 #' # Fit a PNZ-Poisson model with custom optimization method and maximum retries
 #' fit <- glm.pnz(y ~ x1 + x2, data = my_data, method = "BFGS", max_retries = 10)
 #'
-#' # Fit a PNZ-Poisson model with custom starting parameters
-#' start_vals <- c(beta1 = 0.5, beta2 = -0.5, theta = 1)
-#' fit <- glm.pnz(y ~ x1 + x2, data = my_data, start_params = start_vals)
-#'
 #' @export
 glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
   # Extract response and design matrix
