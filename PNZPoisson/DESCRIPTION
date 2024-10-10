@@ -1,6 +1,6 @@
 Package: PNZPoisson
 Type: Package
-Title: Panizzutti's Poisson Regression and functions.
+Title: Panizzutti's Poisson Regression and functions
 Version: 0.1.0
 Author: Giorgio Panizzutti
 Maintainer: The package maintainer <giorgio.panizzutti@gmail.com>
