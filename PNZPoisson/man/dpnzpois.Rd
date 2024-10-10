@@ -22,7 +22,7 @@ Computes the probability mass function (PMF) of the PNZ-Poisson distribution for
 \details{
 The PNZ-Poisson distribution allows for greater flexibility in modeling count data with over-dispersion compared to the standard Poisson distribution.
 
-The function is vectorized, meaning that \code{k}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be recycled to match the length of the longest input vector. All vector inputs must either be of the same length or have a length of 1.
+The function is vectorized, meaning that \code{k}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be used for all evaluations. All vector inputs must either be of the same length or have a length of 1.
 }
 \examples{
 # Evaluate the PMF at k = 0:10 with lambda = 2 and theta = 1

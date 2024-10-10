@@ -26,7 +26,7 @@ Computes the quantile function of the PNZ-Poisson distribution for a vector of p
 \details{
 The quantile function finds the smallest integer \eqn{k} such that the CDF at \eqn{k} is greater than or equal to the specified probability \eqn{p}.
 
-The function is vectorized, meaning that \code{p}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be recycled to match the length of the longest input vector. All vector inputs must either be of the same length or have a length of 1.
+The function is vectorized, meaning that \code{p}, \code{lambda}, and \code{theta} can be vectors. If any of these parameters are single values (length 1), they will be used for all evaluations. All vector inputs must either be of the same length or have a length of 1.
 }
 \examples{
 # Find the 25th, 50th, and 75th percentiles with lambda = 2 and theta = 1

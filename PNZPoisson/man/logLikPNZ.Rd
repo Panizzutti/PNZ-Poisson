@@ -17,12 +17,10 @@ logLikPNZ(k, lambda, theta)
 A single numeric value representing the sum of the log-likelihoods for the provided data and parameters.
 }
 \description{
-Calculates the log-likelihood for observed count data under the PNZ-Poisson distribution. This function is capable of handling both scalar and vector inputs for the observed counts (\code{k}), mean parameters (\code{lambda}), and dispersion parameters (\code{theta}). If any of these parameters are vectors, they must either be of the same length or have a length of 1, in which case the single value is recycled across all evaluations.
+Calculates the log-likelihood for observed count data under the PNZ-Poisson distribution. This function is capable of handling both scalar and vector inputs for the observed counts (\code{k}), mean parameters (\code{lambda}), and dispersion parameters (\code{theta}). If any of these parameters are vectors, they must either be of the same length or have a length of 1, in which case the single value is used for all evaluations.
 }
 \details{
 The PNZ-Poisson (Poisson-Negative Zero) distribution is a generalization of the Poisson distribution that introduces arbitrary underdispersion. The log-likelihood is computed by first calculating the probability mass function (PMF) for each observed count \eqn{k} using the \code{dpnzpois_scalar} function. To ensure numerical stability and avoid taking the logarithm of zero or \code{NA} values, any PMF values that are less than or equal to zero or \code{NA} are replaced with a very small positive number (\eqn{\epsilon = 1 \times 10^{-64}}).
-
-The function is fully vectorized, allowing for efficient computation over large datasets. It ensures that all input vectors are compatible in length, either by matching their lengths or by recycling scalar values as necessary.
 }
 \examples{
 # Single set of parameters
