@@ -343,3 +343,4 @@ logLikPNZ <- function(k, lambda, theta) {
 
   return(sum(log(Li)))
 }
+

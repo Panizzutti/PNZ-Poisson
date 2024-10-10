@@ -1,3 +1,5 @@
+
+
 logLikPNZ_scalar <- function(k, lambda, theta) {
   # Handle zero or negative PMF values to avoid log(0) or log of negative numbers
   if (lambda == 0) {
@@ -7,137 +9,29 @@ logLikPNZ_scalar <- function(k, lambda, theta) {
     if (p <= 0 | is.na(p)) {return(-147)}
     log(p)
   }
-
-
 }
+
 
 neg_log_likelihood_loglink <- function(params, X, y) {
   # Extract beta coefficients and theta
+
   p <- length(params) - 1
   betas <- params[1:p]
-  theta <- params[length(params)]
-
-  # Ensure theta is positive
-  if (theta <= 0) {
-    return(Inf)  # Return infinity to penalize non-positive theta
-  }
-
+  logtheta <- params[p+1]
   # Compute linear predictor and lambda
   eta <- X %*% betas
   lambda <- exp(eta)
 
+  theta <-exp(logtheta)
+
   # Use sapply to compute dpnzpois for each observation
   LLi <- sapply(seq_along(y), function(i) {
-    logLikPNZ_scalar(k[i],lambda[i],theta)
+    logLikPNZ_scalar(y[i],lambda[i],theta)
   })
 
   negLL <- -sum(LLi)
   return(negLL)
 }
-
-# Define the glm.pnz function
-glm.pnz <- function(formula, data, ...) {
-  # Extract response and design matrix
-  mf <- model.frame(formula, data)
-  y <- model.response(mf)
-  X <- model.matrix(formula, data)
-
-  # Fit the model using mle_pnzpois_loglink
-  fit_result <- mle_pnzpois_loglink(X, y, ...)
-
-  # Store additional information
-  fit_result$call <- match.call()
-  fit_result$formula <- formula
-  fit_result$data <- data
-
-  # Set the class of the object
-  class(fit_result) <- "pnz_glm"
-
-  return(fit_result)
-}
-
-# Summary method for pnz_glm objects
-summary.pnz_glm <- function(object, ...) {
-  # Extract estimates and standard errors
-  estimates <- object$betas
-  std_errors <- object$std_errors[1:length(estimates)]
-
-  # Calculate z-values and p-values
-  z_values <- estimates / std_errors
-  p_values <- 2 * (1 - pnorm(abs(z_values)))
-
-  # Create a coefficients table
-  coefficients_table <- data.frame(
-    Estimate = estimates,
-    'Std. Error' = std_errors,
-    'z value' = z_values,
-    'Pr(>|z|)' = p_values,
-    check.names = FALSE  # Prevents R from altering column names
-  )
-
-  # Add row names as parameter names
-  param_names <- colnames(object$X)
-  rownames(coefficients_table) <- param_names
-
-  # Extract additional measures
-  logLik <- object$logLik
-  AIC <- object$AIC
-  BIC <- object$BIC
-  Res_deviance<-object$Res_deviance
-  Null_deviance<-object$Null_deviance
-  df <- object$df
-
-  # Output the summary
-  summary_output <- list(
-    call = object$call,
-    coefficients = coefficients_table,
-    logLik = logLik,
-    AIC = AIC,
-    BIC = BIC,
-    Res_deviance = Res_deviance,
-    Null_deviance = Null_deviance,
-    df = df,
-    theta = object$theta,
-    convergence = object$convergence
-  )
-
-  class(summary_output) <- "summary.pnz_glm"
-  return(summary_output)
-}
-
-# Print method for summary.pnz_glm objects
-print.summary.pnz_glm <- function(x, ...) {
-  cat("\nCall:\n")
-  print(x$call)
-
-  cat("\nCoefficients:\n")
-  printCoefmat(x$coefficients, digits = 4, signif.stars = TRUE)
-
-  cat("\nDispersion parameter (theta):")
-  print(x$theta[1])
-
-  cat("Log-likelihood:")
-  print(x$logLik)
-
-  cat("\nNull deviance:")
-  print(x$Null_deviance)
-
-  cat("\nResidual deviance:")
-  print(x$Res_deviance)
-
-  cat("\nAIC:")
-  print(x$AIC)
-
-  cat("BIC:")
-  print(x$BIC)
-
-  if (x$convergence == 0) {
-    cat("\nOptimization converged successfully.\n")
-  } else {
-    cat("\nOptimization did not converge.\n")
-  }
-}
-
 
 MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries = 5) {
   n <- nrow(X)
@@ -148,15 +42,10 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
 
     glm_fit <- glm(y ~ X-1, family = poisson(link = "log"))
 
-
     start_betas <- coef(glm_fit)
     pearson_residuals <- residuals(glm_fit, type = "pearson")
-    start_theta <- sum(pearson_residuals^2) / (n - p)
-    if (start_theta <= 0 || is.na(start_theta) || is.infinite(start_theta)) {
-      start_theta <- 1
-      warning("Calculated start_theta is non-positive or invalid. Using start_theta = 1.")
-    }
-    c(start_betas, start_theta)
+    start_logtheta <- log(sum(pearson_residuals^2) / (n - p))
+    c(start_betas, start_logtheta)
   }
 
   # Get initial estimates from the Poisson model
@@ -171,34 +60,20 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
   }
 
   # Set lower and upper bounds
-  lower_bounds <- c(rep(-Inf, p), 1e-6)  # Theta > 0
-  upper_bounds <- c(rep(Inf, p), Inf)
+  #lower_bounds <- c(rep(-Inf, p), -Inf)  # Theta > 0, logtheta in R
+  #upper_bounds <- c(rep(Inf, p), Inf)
 
 
 
   # Optimization with retry mechanism
   attempt <- 0
-  while (attempt <= max_retries) {
+  while (attempt <= max_retries-1) {
     # Initialize var_cov_matrix and std_errors at the beginning of each attempt
     var_cov_matrix <- NULL
     std_errors <- rep(NA, p + 1)
 
-    # Generate new starting values close to initial estimates
-    if (attempt == 1) {
-      # Use initial estimates on the first attempt
-      start_params <- initial_estimates
-    } else {
-      # Perturb initial estimates slightly for subsequent attempts
-      # Decrease perturbation with each attempt
-      start_betas <- initial_estimates[1:p] + 0.1*attempt*rnorm(p)
-      start_theta <- initial_estimates[p + 1] + 0.1*attempt*rnorm(1)
-      # Ensure theta remains positive
-      if (start_theta <= 0) {
-        start_theta <- initial_estimates[p + 1] * (1 + 0.1*attempt)
-      }
-      start_params <- c(start_betas, start_theta)
-    }
 
+    start_params <- initial_estimates + 0.1*attempt*rnorm(p+1)
 
     fit <- tryCatch({
       optim(
@@ -207,8 +82,8 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
         X = X,
         y = y,
         method = method,
-        lower = lower_bounds,
-        upper = upper_bounds,
+        #lower = lower_bounds,
+        #upper = upper_bounds,
         control = list(
           maxit = 1000,
           parscale = abs(start_params),
@@ -259,9 +134,6 @@ MLE_find <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries
 
 }
 
-
-
-
 mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", max_retries = 5) {
   n <- nrow(X)
   p <- ncol(X)
@@ -271,31 +143,18 @@ mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", 
   # Extract estimated parameters
   est_params <- fit$par
   betas_est <- est_params[1:p]
-  theta_est <- est_params[p + 1]
+  theta_est <- exp(est_params[p + 1])
 
   logLikelihood = -fit$value
 
-  satLi <- sapply(seq_along(y), function(i) {
-    if (y[i] == 0) {
-      1
-    } else {
-      dpnzpois_scalar(y[i], y[i], theta_est)
-    }
+  satLLi <- sapply(seq_along(y), function(i) {
+    logLikPNZ_scalar(y[i],y[i],theta_est)
   })
-
-
-  epsilon <- 1e-64
-  satLi[satLi <= 0 | is.na(satLi)] <- epsilon
-  saturatedLL= sum(log(satLi))
+  saturatedLL= sum(satLLi)
 
   resdeviance= 2*(saturatedLL - logLikelihood)
-
-
   nullLL=-NULLfit$value
   nulldeviance=2*(saturatedLL-nullLL)
-
-
-
 
   # Compute AIC and BIC
   AIC = 2 * (p+1) - 2 * logLikelihood
@@ -314,12 +173,220 @@ mle_pnzpois_loglink <- function(X, y, start_params = NULL, method = "L-BFGS-B", 
     convergence = fit$convergence,
     var_cov_matrix = fit$var_cov_matrix,
     X = X,
-    y = y
+    y = y,
+    n = n,
+    p = p,
+    df_null=n-2,
+    df_residual=n-p-1
   )
 
   return(result)
 }
 
 
+# R/glm_pnz.R
+
+#' Fit a PNZ-Poisson Generalized Linear Model using a logarithmic link function.
+#'
+#' Fits a generalized linear model using the PNZ-Poisson distribution for the response variable. This function leverages maximum likelihood estimation with a log link function.
+#'
+#' @param formula An object of class \code{\link{formula}}. The model formula specifying the response and predictors.
+#' @param data A data frame containing the variables specified in the formula.
+#' @param method Character string specifying the optimization method to be used in the function. Default is \code{"L-BFGS-B"}.
+#' @param max_retries Integer specifying the maximum number of retries for the optimization algorithm.
+#' @return An object of class \code{pnzpois_glm} containing the fitted model results, including coefficients, fitted values, and other relevant information.
+#'
+#' @details
+#' The \code{glm.pnz} function is designed to fit a PNZ-Poisson generalized linear model to the provided data. By specifying \code{method}, and \code{start_params}, users can control the optimization process used in maximum likelihood estimation. This allows for greater customization and control over the fitting process, enabling adjustments based on data characteristics or specific modeling requirements.
+#'
+#' @examples
+#' # Fit a PNZ-Poisson model with default settings
+#' fit <- glm.pnz(y ~ x1 + x2, data = my_data)
+#'
+#' # Fit a PNZ-Poisson model with custom optimization method and maximum retries
+#' fit <- glm.pnz(y ~ x1 + x2, data = my_data, method = "BFGS", max_retries = 10)
+#'
+#' # Fit a PNZ-Poisson model with custom starting parameters
+#' start_vals <- c(beta1 = 0.5, beta2 = -0.5, theta = 1)
+#' fit <- glm.pnz(y ~ x1 + x2, data = my_data, start_params = start_vals)
+#'
+#' @export
+glm.pnz <- function(formula, data, method = "L-BFGS-B", max_retries = 5) {
+  # Extract response and design matrix
+  mf <- model.frame(formula, data)
+  y <- model.response(mf)
+  X <- model.matrix(formula, data)
+  start_params = NULL
+  # Fit the model using mle_pnzpois_loglink with specified parameters
+  fit_result <- mle_pnzpois_loglink(X, y, start_params = start_params, method = method, max_retries = max_retries)
+
+  # Store additional information
+  fit_result$call <- match.call()
+  fit_result$formula <- formula
+  fit_result$data <- data
+
+  # Set the class of the object
+  class(fit_result) <- "pnzpois_glm"
+
+  return(fit_result)
+}
 
 
+
+#' Summary Method for PNZ-Poisson GLM Objects
+#'
+#' Provides a summary of a fitted PNZ-Poisson generalized linear model, including coefficients, standard errors, z-values, p-values, log-likelihood, AIC, BIC, deviance measures, and convergence status.
+#'
+#' @param object An object of class \code{pnzpois_glm} produced by \code{\link{glm.pnz}}.
+#' @param ... Additional arguments (currently not used).
+#'
+#' @return An object of class \code{summary.pnz_glm} containing the summary information.
+#'
+#' @details
+#' The summary includes a table of coefficients with their estimates, standard errors, z-values, and p-values. It also provides information on the dispersion parameter (\code{theta}), log-likelihood, AIC, BIC, residual deviance, null deviance, degrees of freedom, and optimization convergence status.
+#'
+#' @examples
+#' # Assuming 'fit' is a fitted pnzpois_glm object
+#' summary_fit <- summary(fit)
+#' print(summary_fit)
+#'
+#' @export
+summary.pnz_glm <- function(object, ...) {
+  # Extract estimates and standard errors
+  estimates <- object$betas
+  std_errors <- object$std_errors[1:length(estimates)]
+
+  # Calculate z-values and p-values
+  z_values <- estimates / std_errors
+  p_values <- 2 * (1 - pnorm(abs(z_values)))
+
+  # Create a coefficients table
+  coefficients_table <- data.frame(
+    Estimate = estimates,
+    'Std. Error' = std_errors,
+    'z value' = z_values,
+    'Pr(>|z|)' = p_values,
+    check.names = FALSE  # Prevents R from altering column names
+  )
+
+  # Add row names as parameter names
+  param_names <- colnames(object$X)
+  rownames(coefficients_table) <- param_names
+
+  # Extract additional measures
+  logLik <- object$logLik
+  AIC <- object$AIC
+  BIC <- object$BIC
+  Res_deviance<-object$Res_deviance
+  Null_deviance<-object$Null_deviance
+  df <- object$df
+
+  # Output the summary
+  summary_output <- list(
+    call = object$call,
+    coefficients = coefficients_table,
+    logLik = logLik,
+    AIC = AIC,
+    BIC = BIC,
+    Res_deviance = Res_deviance,
+    Null_deviance = Null_deviance,
+    df = df,
+    theta = object$theta,
+    convergence = object$convergence
+  )
+
+  class(summary_output) <- "summary.pnzpois_glm"
+  return(summary_output)
+}
+
+
+
+
+
+#' Print Method for Summary PNZ-Poisson GLM Objects
+#'
+#' Prints a concise summary of a fitted PNZ-Poisson generalized linear model.
+#'
+#' @param x An object of class \code{summary.pnz_glm} produced by \code{\link{summary.pnz_glm}}.
+#' @param ... Additional arguments (currently not used).
+#'
+#' @return Prints the summary to the console.
+#'
+#' @examples
+#' # Assuming 'summary_fit' is a summary.pnz_glm object
+#' print(summary_fit)
+#'
+#' @export
+print.summary.pnz_glm <- function(x, ...) {
+  cat("\nCall:\n")
+  print(x$call)
+
+  cat("\nCoefficients:\n")
+  printCoefmat(x$coefficients, digits = 4, signif.stars = TRUE)
+
+  cat("\nDispersion parameter (theta):")
+  print(x$theta[1])
+
+  cat("Log-likelihood:")
+  print(x$logLik)
+
+  cat("\nNull deviance:")
+  print(x$Null_deviance)
+
+  cat("\nResidual deviance:")
+  print(x$Res_deviance)
+
+  cat("\nAIC:")
+  print(x$AIC)
+
+  cat("BIC:")
+  print(x$BIC)
+
+  if (x$convergence == 0) {
+    cat("\nOptimization converged successfully.\n")
+  } else {
+    cat("\nOptimization did not converge.\n")
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+set.seed(52)
+n <- 100
+x1sim <- rnorm(n,14,3)
+x2sim <- runif(n)
+beta_true <- c(0.8, 0.3, -0.5)
+theta_true <- 0.5
+
+# Simulate response variable y
+data <- data.frame(x1 = x1sim, x2 = x2sim)
+X <- model.matrix(~ x1 + x2, data)
+eta <- X %*% beta_true
+lambda <- exp(eta)
+lambda
+y <- sapply(lambda, function(l) rpnzpois(1,l , theta_true))
+data$y <- y
+y
+
+poisglm = glm(y ~ x1 + x2, data=data, family=poisson(link = "log"))
+summary(poisglm)
+logLik(poisglm)
+
+#summary( glm(y ~ x1 + x2, data=data, family=quasipoisson(link = "log")))
+
+pnzpoismodel <- glm.pnz(y ~ x1 + x2, data = data, max_retries = 10)
+# Get the summary of the custom model
+summary.pnz_glm(pnzpoismodel)
+
+fish=sum((residuals(poisglm, type="pearson")^2))/ (n - 4)
+
+fitted = predict(poisglm, type = "response")
+logLikPNZ(y,fitted,fish)
